@@ -27,10 +27,28 @@ namespace System.Management.Automation
             }
         }
 
+        class ScopeAncestorIterator
+        {
+            readonly SessionStateScope _scope;
+            public ScopeAncestorIterator(SessionStateScope scope)
+            {
+                this._scope = scope;
+            }
+
+            public System.Collections.Generic.IEnumerator<SessionStateScope> GetEnumerator()
+            {
+                for (var item = _scope; item != null; item = item.ParentScope)
+                {
+                    yield return item;
+                }
+            }
+        }
+
+
         public PSDriveInfo Get(string driveName)
         {
             //recursively look for the drive
-            for (var candidate = sessionScope; candidate != null; candidate = candidate.ParentScope)
+            foreach (var candidate in new ScopeAncestorIterator(sessionScope))
             {
                 var info = candidate.GetLocalDrive(driveName);
                 if (info != null)
@@ -48,7 +66,7 @@ namespace System.Management.Automation
             //dictionary first, so ContainsKey is faster than in a collection
             var visibleDrives = new Dictionary<string, PSDriveInfo>(sessionScope.LocalDrives);
             //recursively gather all drives from parent scopes
-            for (var cur = sessionScope.ParentScope; cur != null; cur = cur.ParentScope)
+            foreach (var cur in new ScopeAncestorIterator(sessionScope.ParentScope))
             {
                 foreach (KeyValuePair<string, PSDriveInfo> pair in cur.LocalDrives)
                 {
@@ -66,7 +84,7 @@ namespace System.Management.Automation
         {
             if (String.IsNullOrEmpty(scope))
             {
-                 //this behavior corresponds to PS 2.0
+                //this behavior corresponds to PS 2.0
                 return GetAll();
             }
             SessionStateScope affectedScope = sessionScope.GetScope(scope);
